@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>CME Detector — Space Edition</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap">
+  <link rel="stylesheet" href="space.css">
+  <link rel="stylesheet" href="solar.css">
+</head>
+<body>
+  <div id="space-bg"></div>
+  <div class="main-content">
+    <div class="header">
+      <div class="header-title">🚀 CME Detector <span style="color:#00c3ff">— Space Edition</span></div>
+      <div class="header-actions">
+        <button id="refreshBtn" class="refresh-btn" title="Refresh data">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>Solar Wind Speed <small>(km/s)</small></h3><div class="card-meta">Live NOAA</div></div>
+      <div class="card-body"><canvas id="chart1"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>Magnetic Flux <small>(Bz, nT)</small></h3><div class="card-meta">IMF</div></div>
+      <div class="card-body"><canvas id="chart2"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h4>Detected CME Events</h4><div class="card-meta">Recent</div></div>
+      <div class="card-body">
+        <div id="events" class="events">Loading...</div>
+      </div>
+    </div>
+    <div style="text-align:center;color:#00c3ff88;font-size:1.1rem;margin-top:2rem;">
+      <span>Data: NOAA SWPC | UI: Space Theme | 3D by Three.js</span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- legacy Three.js background removed in favor of CSS solar system -->
+  <script src="solar.js"></script>
+  <script>
+    const ctx1 = document.getElementById('chart1').getContext('2d');
+    const ctx2 = document.getElementById('chart2').getContext('2d');
+    let chart1, chart2;
+
+    async function fetchData() {
+      try {
+        const r = await fetch('/latest?n=800');
+        const data = await r.json();
+        const plasma = data.plasma || [];
+        const mag = data.mag || [];
+
+        const labelsPlasma = plasma.map(p => p.timeISO);
+        const speeds = plasma.map(p => p.speed);
+
+        const labelsMag = mag.map(m => m.timeISO);
+        const bz = mag.map(m => m.bz);
+
+        const config1 = {
+          type: 'line',
+          data: { labels: labelsPlasma, datasets: [{
+            label: 'Solar Wind Speed (km/s)',
+            data: speeds,
+            borderColor: '#00c3ff',
+            backgroundColor: 'rgba(0,195,255,0.12)',
+            tension: 0.25, pointRadius: 0, borderWidth: 2
+          }]},
+          options: { responsive: true, plugins: { legend: { labels: { color: '#00c3ff' } } },
+            scales: { x: { ticks: { color: '#e0e6f6', maxTicksLimit: 12 } }, y: { ticks: { color: '#e0e6f6' } } } }
+        };
+
+        const config2 = {
+          type: 'line',
+          data: { labels: labelsMag, datasets: [{
+            label: 'IMF Bz (nT)',
+            data: bz,
+            borderColor: '#ffeb3b',
+            backgroundColor: 'rgba(255,235,59,0.10)',
+            tension: 0.25, pointRadius: 0, borderWidth: 2
+          }]},
+          options: { responsive: true, plugins: { legend: { labels: { color: '#ffeb3b' } } },
+            scales: { x: { ticks: { color: '#e0e6f6', maxTicksLimit: 12 } }, y: { ticks: { color: '#e0e6f6' } } } }
+        };
+
+        if (!chart1) chart1 = new Chart(ctx1, config1); else { chart1.data = config1.data; chart1.update(); }
+        if (!chart2) chart2 = new Chart(ctx2, config2); else { chart2.data = config2.data; chart2.update(); }
+      } catch (err) { console.error(err); }
+    }
+
+    async function fetchEvents() {
+      const r = await fetch('/events');
+      const j = await r.json();
+      const events = j.detections || [];
+      const el = document.getElementById('events');
+      if (!events.length) { el.innerHTML = '<i>No events detected (yet)</i>'; return; }
+      el.innerHTML = events.slice().reverse().map(e => `
+        <div class="evt">
+          <strong>${e.timeISO}</strong> — <span style="color:#00c3ff">speed:</span> ${e.speed} km/s, <span style="color:#ffeb3b">density:</span> ${e.density} p/cm³, <span style="color:#ff1744">bz:</span> ${e.bz} nT
+          <div style="color:#00c3ffb0">ΔV: ${e.deltaV ?? 'n/a'} km/s • arrival: ${e.forecast_arrival_hours ?? 'n/a'} h • <span style="color:#ffeb3b">${e.intensity}</span></div>
+        </div>
+      `).join('');
+    }
+
+    async function refreshAll() {
+  document.getElementById('refreshBtn').classList.add('loading');
+  await fetchData();
+  await fetchEvents();
+  document.getElementById('refreshBtn').classList.remove('loading');
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 60*1000);
+    // Wire up refresh button
+    document.getElementById('refreshBtn').addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      await refreshAll();
+      e.currentTarget.disabled = false;
+    });
+  </script>
+</body>
+</html>

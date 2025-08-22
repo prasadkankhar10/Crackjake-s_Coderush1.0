@@ -1,0 +1,121 @@
+/* Solar system CSS (converted from provided SCSS) */
+:root{
+  --gravitation-constant: 6.673;
+  --stars: 300;
+  --solar-scale: 1;
+}
+html,body{
+  height:100%;
+  margin:0;
+  padding:0;
+  background: transparent; /* page background handled by space.css */
+}
+
+/* Starfield container */
+.star-container{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+}
+.star{
+  position:absolute;
+  width:2px;
+  height:2px;
+  border-radius:50%;
+  background: rgba(80,215,255,0.9);
+  opacity:0.9;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+}
+
+/* Solar system wrapper - positioned left, half off-screen */
+.container.solar{
+  position:fixed;
+  left: -20vw; /* moved slightly right so more of system is visible */
+  top: 10vh;
+  width: 900px;
+  height: 900px;
+  transform: scale(0.85);
+  z-index:0;
+  pointer-events:none;
+}
+
+/* Sun */
+.sun{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%);
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  background: radial-gradient(circle at 30% 30%, #fff59d, #ffb74d 30%, #ff7043 55%, #b23b23 100%);
+  box-shadow: 0 0 120px rgba(255,200,80,0.65), inset 0 12px 36px rgba(255,230,150,0.28);
+}
+
+/* Generic orbit styling */
+[class$='-orbit']{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%);
+  border-radius:50%;
+  border:1px dashed rgba(80,215,255,0.06);
+  box-shadow: 0 0 8px rgba(0,0,0,0.25) inset;
+}
+
+/* Planet base style (planet placed at top center of orbit) */
+[class$='-orbit'] > div{
+  position:absolute;
+  left:50%;
+  top:0%;
+  transform: translate(-50%,-50%);
+  border-radius:50%;
+}
+
+/* Individual planet sizes and orbit dimensions */
+.mercurys-orbit{ width:100px; height:100px; animation: rotate 4s linear infinite; }
+.mercurys-orbit > .mercury{ width:12px; height:12px; background:linear-gradient(#8a6f5a,#5b4229); box-shadow:0 0 8px rgba(255,255,255,0.04) }
+
+.venus-orbit{ width:160px; height:160px; animation: rotate 6s linear infinite; }
+.venus-orbit > .venus{ width:14px; height:14px; background:linear-gradient(#e0a77a,#b8733a); }
+
+.earths-orbit{ width:220px; height:220px; animation: rotate 8s linear infinite; }
+.earths-orbit > .earth{ width:16px; height:16px; background:linear-gradient(#3E8EBB,#2a6a8b); box-shadow:0 0 6px rgba(60,160,220,0.25)}
+
+.mars-orbit{ width:280px; height:280px; animation: rotate 10s linear infinite; }
+.mars-orbit > .mars{ width:14px; height:14px; background:linear-gradient(#b4553a,#7a2f22); }
+
+.jupiters-orbit{ width:360px; height:360px; animation: rotate 16s linear infinite; }
+.jupiters-orbit > .jupiter{ width:26px; height:26px; background:linear-gradient(#cfa77a,#7f5a33); box-shadow: inset -4px -2px 0 rgba(0,0,0,0.15)}
+
+.saturns-orbit{ width:460px; height:460px; animation: rotate 22s linear infinite; }
+.saturns-orbit > .saturn{ width:22px; height:22px; background:linear-gradient(#f2b07a,#d1763a); }
+.saturns-orbit > .saturn .ring{ position:absolute; left:50%; top:50%; transform: translate(-50%,-50%) rotateX(70deg); width:80px; height:80px; border-radius:50%; border:6px solid rgba(200,170,120,0.8); }
+
+.uranus-orbit{ width:540px; height:540px; animation: rotate 28s linear infinite; }
+.uranus-orbit > .uranus{ width:20px; height:20px; background:linear-gradient(#66c0cc,#2f8b92); }
+
+.neptunes-orbit{ width:620px; height:620px; animation: rotate 34s linear infinite; }
+.neptunes-orbit > .neptune{ width:20px; height:20px; background:linear-gradient(#6acdc0,#2f9b8f); }
+
+.plutos-orbit{ width:700px; height:700px; animation: rotate 40s linear infinite; }
+.plutos-orbit > .pluto{ width:10px; height:10px; background:linear-gradient(#c6c053,#9a8f34); }
+
+/* Rotate animation for orbits */
+@keyframes rotate{ to{ transform: translate(-50%,-50%) rotate(360deg); } }
+
+/* Stars twinkle animation */
+@keyframes twinkle{ 0%,100%{ opacity:0.1 } 50%{ opacity:1 } }
+
+/* Responsiveness */
+@media (max-width:900px){
+  .container.solar{ transform: scale(0.65); left: -30vw; top:6vh; }
+}
+@media (max-width:600px){
+  .container.solar{ transform: scale(0.5); left: -34vw; top:8vh; }
+}
+
+/* ensure it doesn't block interactions */
+.container.solar, .star-container{ pointer-events:none; }
