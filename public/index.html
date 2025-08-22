@@ -24,6 +24,12 @@
           <label style="font-size:0.85rem;color:var(--muted);display:flex;align-items:center;gap:6px;">Low threshold (km/s)
             <input id="thresholdToggle" type="number" min="100" max="5000" value="600" step="1" style="width:80px;margin-left:6px;padding:6px;border-radius:6px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,0.06);" />
           </label>
+          <div style="display:flex;gap:6px;align-items:center;margin-left:8px;">
+            <button id="speedZoomIn" title="Zoom in" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--primary);">＋</button>
+            <button id="speedZoomOut" title="Zoom out" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--primary);">－</button>
+            <button id="speedZoomReset" title="Reset zoom" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--muted);">Reset</button>
+            <div id="speedWindowLabel" style="font-size:0.85rem;color:var(--muted);margin-left:8px;">Window: 800</div>
+          </div>
         </div>
       </div>
       <div class="card-body"><canvas id="chart1"></canvas></div>
@@ -35,6 +41,12 @@
           <label style="font-size:0.85rem;color:var(--muted);display:flex;align-items:center;gap:6px;">Bz threshold (nT)
             <input id="bzThresholdInput" type="number" min="-1000" max="1000" value="-5" step="0.1" style="width:90px;margin-left:6px;padding:6px;border-radius:6px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,0.06);" />
           </label>
+          <div style="display:flex;gap:6px;align-items:center;margin-left:8px;">
+            <button id="bzZoomIn" title="Zoom in" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--dust);">＋</button>
+            <button id="bzZoomOut" title="Zoom out" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--dust);">－</button>
+            <button id="bzZoomReset" title="Reset zoom" style="padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--muted);">Reset</button>
+            <div id="bzWindowLabel" style="font-size:0.85rem;color:var(--muted);margin-left:8px;">Window: 800</div>
+          </div>
         </div>
       </div>
       <div class="card-body"><canvas id="chart2"></canvas></div>
@@ -69,19 +81,25 @@
   let speedThreshold = 600;
   // threshold for coloring southward Bz segments (default -5 nT)
   let bzThreshold = -5;
+  // window sizes for zooming (number of samples shown)
+  let speedWindow = 800;
+  let bzWindow = 800;
 
   async function fetchData() {
     try {
-      const r = await fetch('/latest?n=800');
+  const r = await fetch(`/latest?n=${Math.max(speedWindow,bzWindow,50)}`);
       const data = await r.json();
       const plasma = data.plasma || [];
       const mag = data.mag || [];
 
-      const labelsPlasma = plasma.map(p => p.timeISO);
-      const speeds = plasma.map(p => p.speed);
+  // slice according to zoom window sizes (most recent last)
+  const plasmaSlice = plasma.slice(-Math.max(speedWindow,50));
+  const magSlice = mag.slice(-Math.max(bzWindow,50));
+  const labelsPlasma = plasmaSlice.map(p => p.timeISO);
+  const speeds = plasmaSlice.map(p => p.speed);
 
-      const labelsMag = mag.map(m => m.timeISO);
-      const bz = mag.map(m => m.bz);
+  const labelsMag = magSlice.map(m => m.timeISO);
+  const bz = magSlice.map(m => m.bz);
 
       // read numeric input to update threshold (clamped)
       const thrEl = document.getElementById('thresholdToggle');
@@ -150,10 +168,14 @@
           scales: { x: { ticks: { color: '#e6f3fb', maxTicksLimit: 12 } }, y: { ticks: { color: '#e6f3fb' } } } }
       };
 
-      // recreate chart1 to ensure segment callback uses current threshold/gradient
+  // recreate chart1 to ensure segment callback uses current threshold/gradient
       try { if (chart1) { chart1.destroy(); chart1 = null; } } catch(e){}
       chart1 = new Chart(ctx1, config1);
-      if (!chart2) chart2 = new Chart(ctx2, config2); else { chart2.data = config2.data; chart2.update(); }
+  if (!chart2) chart2 = new Chart(ctx2, config2); else { chart2.destroy(); chart2 = new Chart(ctx2, config2); }
+
+  // update window labels
+  const swLabel = document.getElementById('speedWindowLabel'); if (swLabel) swLabel.innerText = `Window: ${speedWindow}`;
+  const bzLabel = document.getElementById('bzWindowLabel'); if (bzLabel) bzLabel.innerText = `Window: ${bzWindow}`;
     } catch (err) { console.error(err); }
   }
 
@@ -351,6 +373,20 @@
   if (toggleEl) toggleEl.addEventListener('input', async () => { await fetchData(); });
   const bzInput = document.getElementById('bzThresholdInput');
   if (bzInput) bzInput.addEventListener('input', async () => { await fetchData(); });
+  // zoom controls
+  const speedIn = document.getElementById('speedZoomIn');
+  const speedOut = document.getElementById('speedZoomOut');
+  const speedReset = document.getElementById('speedZoomReset');
+  if (speedIn) speedIn.addEventListener('click', async () => { speedWindow = Math.max(50, Math.floor(speedWindow/1.5)); await fetchData(); });
+  if (speedOut) speedOut.addEventListener('click', async () => { speedWindow = Math.min(50000, Math.ceil(speedWindow*1.5)); await fetchData(); });
+  if (speedReset) speedReset.addEventListener('click', async () => { speedWindow = 800; await fetchData(); });
+
+  const bzIn = document.getElementById('bzZoomIn');
+  const bzOut = document.getElementById('bzZoomOut');
+  const bzReset = document.getElementById('bzZoomReset');
+  if (bzIn) bzIn.addEventListener('click', async () => { bzWindow = Math.max(50, Math.floor(bzWindow/1.5)); await fetchData(); });
+  if (bzOut) bzOut.addEventListener('click', async () => { bzWindow = Math.min(50000, Math.ceil(bzWindow*1.5)); await fetchData(); });
+  if (bzReset) bzReset.addEventListener('click', async () => { bzWindow = 800; await fetchData(); });
   </script>
 </body>
 </html>
