@@ -15,6 +15,7 @@ function App() {
   const [data, setData] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [suitFolder, setSuitFolder] = useState('suit_2025Aug22T041648755');
 
   const handleFile = (e) => {
     setFile(e.target.files[0]);
@@ -59,6 +60,21 @@ function App() {
       {result && (
         <div className={`p-3 rounded mb-4 text-white ${riskColors[result.risk_level]}`}>Risk: <b>{result.risk_level.toUpperCase()}</b> — {result.message}</div>
       )}
+      <div className="mb-4 p-2 bg-white rounded shadow">
+        <label className="block text-sm text-gray-600">Or run SUIT-folder detection (server-side)</label>
+        <div className="flex gap-2 mt-2">
+          <input value={suitFolder} onChange={(e)=>setSuitFolder(e.target.value)} className="border p-2 flex-1" />
+          <button onClick={async ()=>{
+            setLoading(true);
+            try{
+              const res = await axios.post(`${API}/detect_suit_folder?folder=${encodeURIComponent(suitFolder)}`);
+              setResult(res.data);
+              setData([]);
+            }catch(e){ alert('Error: '+(e.response?.data?.error||e.message)); }
+            setLoading(false);
+          }} className="bg-indigo-600 text-white px-4 py-2 rounded">Detect SUIT Folder</button>
+        </div>
+      </div>
       {data.length > 0 && (
         <div className="bg-white rounded shadow p-4 mb-4">
           <h2 className="font-semibold mb-2">Solar Wind & Flux</h2>
