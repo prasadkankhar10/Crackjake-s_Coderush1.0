@@ -18,6 +18,29 @@
   }
 })();
 
+// Background star layer (behind solar system)
+(function(){
+  const BG_COUNT = 180;
+  const bg = document.createElement('div');
+  bg.className = 'star-background';
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  for(let i=0;i<BG_COUNT;i++){
+    const s = document.createElement('div');
+    s.className = 'star' + (Math.random() > 0.8 ? ' large' : '');
+    s.style.left = (Math.random()* (w*1.6) - w*0.3) + 'px';
+    s.style.top = (Math.random()* (h*1.2) - h*0.1) + 'px';
+    s.style.width = s.classList.contains('large') ? '3px' : (Math.random()*2 + 1) + 'px';
+    s.style.height = s.style.width;
+    s.style.opacity = Math.random()*0.6 + 0.3;
+    s.style.animation = `twinkle ${2+Math.random()*5}s linear ${Math.random()*5}s infinite`;
+    bg.appendChild(s);
+  }
+  // insert at top so it's behind solar system which we later insert before main content
+  if (document.body.firstChild) document.body.insertBefore(bg, document.body.firstChild);
+  else document.body.appendChild(bg);
+})();
+
 // Insert solar system markup into body
 (function(){
   const html = `

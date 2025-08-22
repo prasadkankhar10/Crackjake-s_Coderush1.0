@@ -13,9 +13,9 @@
   <div class="main-content">
     <div class="header">
       <div class="header-title">🚀 CME Detector <span style="color:#00c3ff">— Space Edition</span></div>
-      <div class="header-actions">
-        <button id="refreshBtn" class="refresh-btn" title="Refresh data">↻ Refresh</button>
-      </div>
+    <div class="header-actions">
+  <button id="refreshBtn" class="refresh-btn" title="Refresh data">↻ Refresh</button>
+    </div>
     </div>
 
     <div class="card">
@@ -32,6 +32,13 @@
       <div class="card-header"><h4>Detected CME Events</h4><div class="card-meta">Recent</div></div>
       <div class="card-body">
         <div id="events" class="events">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h4>Prediction / Short-term Forecast</h4><div class="card-meta">Live</div></div>
+      <div class="card-body">
+        <div id="predictCard">Loading predictions...</div>
       </div>
     </div>
     <div style="text-align:center;color:#00c3ff88;font-size:1.1rem;margin-top:2rem;">
@@ -94,21 +101,65 @@
     async function fetchEvents() {
       const r = await fetch('/events');
       const j = await r.json();
-      const events = j.detections || [];
+      // accept either an array response or an object { detections: [...] }
+      let events = Array.isArray(j) ? j : (Array.isArray(j.detections) ? j.detections : []);
       const el = document.getElementById('events');
       if (!events.length) { el.innerHTML = '<i>No events detected (yet)</i>'; return; }
-      el.innerHTML = events.slice().reverse().map(e => `
+
+      // map intensity when missing (same logic as server heuristics)
+      const mapIntensity = (speed) => {
+        if (speed == null) return 'Unknown';
+        if (speed > 3000) return 'Very Strong';
+        if (speed > 1500) return 'Strong';
+        if (speed > 1200) return 'Moderate';
+        if (speed > 400) return 'Mild';
+        return 'Nominal';
+      };
+      const badgeClassFor = (intensity) => {
+        if (!intensity) return 'info';
+        const s = String(intensity).toLowerCase();
+        if (s.includes('very') || s.includes('strong') || s.includes('crit')) return 'crit';
+        if (s.includes('moderate') || s.includes('mild')) return 'warn';
+        return 'info';
+      };
+
+      // normalize fields for rendering
+      const normalized = events.map(e => ({
+        id: e.id || `${e.timeISO || 'unknown'}_${Math.round(e.speed||0)}`,
+        timeISO: e.timeISO || e.time || 'Unknown time',
+        speed: (e.speed == null ? (e.speed === 0 ? 0 : null) : Math.round(e.speed)),
+        density: (e.density == null ? (e.density === 0 ? 0 : null) : Math.round(e.density)),
+        bz: (e.bz == null ? (e.bz === 0 ? 0 : null) : Math.round(e.bz)),
+        deltaV: e.deltaV != null ? e.deltaV : (e.delta_v ?? null),
+        forecast_arrival_hours: e.forecast_arrival_hours ?? e.arrival_hours ?? null,
+        intensity: e.intensity ?? mapIntensity(e.speed)
+      }));
+
+      el.innerHTML = normalized.slice().reverse().map(e => {
+        const badgeCls = badgeClassFor(e.intensity);
+        return `
         <div class="evt">
-          <strong>${e.timeISO}</strong> — <span style="color:#00AFFF">speed:</span> ${e.speed} km/s, <span style="color:#FFB347">density:</span> ${e.density} p/cm³, <span style="color:#DC2626">bz:</span> ${e.bz} nT
-          <div style="color:rgba(0,170,255,0.6)">ΔV: ${e.deltaV ?? 'n/a'} km/s • arrival: ${e.forecast_arrival_hours ?? 'n/a'} h • <span style="color:#FFB347">${e.intensity}</span></div>
-        </div>
-      `).join('');
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <strong>${e.timeISO}</strong>
+            <span class="badge ${badgeCls}">${e.intensity}</span>
+          </div>
+          <div style="margin-top:6px;">
+            <span style="color:var(--primary)">speed:</span> ${e.speed ?? 'n/a'} km/s ·
+            <span style="color:var(--dust)">density:</span> ${e.density ?? 'n/a'} p/cm³ ·
+            <span style="color:var(--accent)">bz:</span> ${e.bz ?? 'n/a'} nT
+          </div>
+          <div style="color:rgba(0,170,255,0.6);margin-top:6px;">
+            ΔV: ${e.deltaV ?? 'n/a'} km/s · arrival: ${e.forecast_arrival_hours ?? 'n/a'} h
+          </div>
+        </div>`;
+      }).join('');
     }
 
     async function refreshAll() {
   document.getElementById('refreshBtn').classList.add('loading');
   await fetchData();
   await fetchEvents();
+  await fetchPredict();
   document.getElementById('refreshBtn').classList.remove('loading');
     }
 
@@ -120,6 +171,115 @@
       await refreshAll();
       e.currentTarget.disabled = false;
     });
+
+    // Prediction UI: fetch /predict and render into the Predict card
+    async function fetchPredict() {
+      const el = document.getElementById('predictCard');
+      if (!el) return;
+      try {
+        const r = await fetch('/predict');
+        const j = await r.json();
+        const quick = j.quick || {};
+        const fc = j.forecast || { speed: [], bz: [] };
+        const score = quick.score ?? 'n/a';
+        const label = quick.severity_label ?? 'Nominal';
+        const cls = quick.severity_class ?? 'info';
+        const anomaly = quick.anomaly?.isAnomaly ? quick.anomaly.triggers.map(t => `${t.metric}:${t.z}`).join(', ') : '';
+        const nextSpeed = fc.speed && fc.speed.length ? fc.speed[0] : 'n/a';
+        const nextBz = fc.bz && fc.bz.length ? fc.bz[0] : 'n/a';
+  el.innerHTML = `
+          <div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:center;">
+            <div style="min-width:160px;">
+              <div style="font-weight:700;color:var(--muted);font-size:0.95rem;">Quick Score</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                <div class="badge ${cls}" style="font-size:0.95rem;padding:8px 12px;">${label}</div>
+                <div style="font-weight:700;color:rgba(255,255,255,0.9);">${score}</div>
+              </div>
+            </div>
+            <div style="min-width:220px;">
+              <div style="font-weight:700;color:var(--muted);font-size:0.95rem;">Next step forecast</div>
+              <div style="margin-top:6px;color:rgba(255,255,255,0.9);">Speed: <span style="color:var(--primary)">${nextSpeed}</span> km/s · Bz: <span style="color:var(--dust)">${nextBz}</span> nT</div>
+            </div>
+            <div style="flex:1;min-width:160px;">
+              <div style="font-weight:700;color:var(--muted);font-size:0.95rem;">Details</div>
+              <div style="margin-top:6px;color:rgba(255,255,255,0.8);font-size:0.9rem;">Anomaly: ${anomaly || 'none'}</div>
+            </div>
+            <div style="width:100%;color:rgba(255,255,255,0.5);font-size:0.8rem;margin-top:8px;">Updated ${new Date().toLocaleTimeString()}</div>
+          </div>`;
+        // add download controls (format selector, limit, and download + spinner)
+        el.innerHTML += `
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="color:var(--muted);font-size:0.85rem;">Format:
+              <select id="exportFormat" style="margin-left:6px;padding:6px;border-radius:8px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,0.06);">
+                <option value="csv">CSV</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+            <label style="color:var(--muted);font-size:0.85rem;">Limit:
+              <input id="exportLimit" type="number" min="1" max="50000" value="500" style="width:90px;margin-left:6px;padding:6px;border-radius:8px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,0.06);" />
+            </label>
+            <button id="downloadDetectionsBtn" style="background:linear-gradient(90deg,var(--primary),var(--energy));border:0;color:white;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700;">Download</button>
+            <div id="downloadSpinner" style="display:none;margin-left:6px;align-items:center;font-size:0.9rem;color:var(--muted);">Preparing<span id="dot">.</span></div>
+          </div>`;
+        const dbtn = document.getElementById('downloadDetectionsBtn');
+        if (dbtn) dbtn.addEventListener('click', async () => {
+          const fmt = document.getElementById('exportFormat').value || 'csv';
+          const lim = Number(document.getElementById('exportLimit').value) || 500;
+          await downloadExport('detections', fmt, lim);
+        });
+        // small animated dot for spinner text
+        (function(){ const ds = document.getElementById('downloadSpinner'); const dot = document.getElementById('dot'); if (!ds || !dot) return; let i=0; setInterval(()=>{ i=(i+1)%4; dot.innerText='.'.repeat(i); },400); })();
+      } catch (err) {
+        el.innerText = 'Predict: offline';
+      }
+    }
+
+    // helper to trigger download from /export with spinner and streaming
+    async function downloadExport(type='detections', format='csv', limit=500) {
+      const spinner = document.getElementById('downloadSpinner');
+      if (spinner) spinner.style.display = 'inline-flex';
+      const url = `/export?format=${encodeURIComponent(format)}&limit=${encodeURIComponent(limit)}`;
+      try {
+        // For JSON small responses we can simply navigate to URL to prompt download
+        if (format === 'json') {
+          // open in new tab to let browser handle JSON download
+          window.open(url, '_blank');
+          return;
+        }
+
+        // For CSV we stream the response as a blob and trigger download to keep spinner until ready
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Export failed: '+resp.status);
+        // stream to blob (works for moderate-large files without fully building strings)
+        const reader = resp.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.length;
+        }
+        const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const urlb = URL.createObjectURL(blob);
+        link.href = urlb;
+        link.download = 'detections.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(urlb);
+      } catch (err) {
+        console.error('Download error', err);
+        alert('Export failed: ' + (err && err.message ? err.message : 'unknown'));
+      } finally {
+        if (spinner) spinner.style.display = 'none';
+      }
+    }
+
+  // call predictions on each refresh and at regular interval (shows live with delay)
+  fetchPredict();
+  setInterval(fetchPredict, 30*1000);
   </script>
 </body>
 </html>

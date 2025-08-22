@@ -1,6 +1,6 @@
 :root{
-  --bg-1: #000000; /* Rich Black */
-  --bg-2: #000000;
+  --bg-1: #030417; /* deep navy */
+  --bg-2: #000006; /* near-black */
   --panel: rgba(255,255,255,0.02);
   --glass-border: rgba(255,255,255,0.04);
   --primary: #00AFFF; /* Starburst (electric blue) */
@@ -8,7 +8,13 @@
   --energy: #7C3AED; /* Energy Jets (purple) */
   --accent: #DC2626;  /* Crimson accent */
   --muted: #9fbfda;
-  --text: #e6f3fb; /* light text for contrast on black */
+  --text: #000000; /* light text for contrast on black */
+  /* responsive tokens */
+  --content-max: 700px;
+  --gutter: clamp(0.5rem, 2vw, 1.25rem);
+  --pad-vertical: clamp(0.75rem, 2.2vw, 2rem);
+  --card-gap: clamp(12px, 2vw, 26px);
+  --card-padding: clamp(14px, 2vw, 24px);
 }
 
 /* Ensure touch targets are large enough and text is readable on mobile */
@@ -67,7 +73,16 @@ html {
 /* Space-themed styles for CME Detector */
 body {
   font-family: 'Orbitron', Arial, sans-serif;
-  background: radial-gradient(ellipse at bottom, var(--bg-2) 0%, var(--bg-1) 100%);
+  /* CSS-only space background: nebula + base gradient + two star dot layers */
+  background:
+    radial-gradient(1200px circle at 20% 30%, rgba(0,170,255,0.06) 0%, rgba(124,58,237,0.05) 25%, rgba(255,179,71,0.03) 55%, rgba(0,0,0,0) 75%),
+    linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%),
+    radial-gradient(circle, rgba(255,255,255,0.02) 1px, rgba(255,255,255,0) 1.5px),
+    radial-gradient(circle, rgba(255,255,255,0.01) 1px, rgba(255,255,255,0) 2px);
+  /* sizes control nebula scale and star density/spacing */
+  background-size: 1200px auto, cover, 4px 4px, 8px 8px;
+  background-position: 20% 30%, center center, 0 0, 40% 60%;
+  background-repeat: no-repeat, no-repeat, repeat, repeat;
   color: var(--text);
   padding: 0;
   margin: 0;
@@ -76,32 +91,64 @@ body {
 }
 
 .header {
-  text-align: center;
-  padding: 1.2rem 0 0.6rem 0;
+  /* center header as a flexible card matching content width */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: calc(100% - (var(--gutter) * 2));
+  max-width: var(--content-max);
+  margin: var(--pad-vertical) auto calc(var(--pad-vertical) / 2) auto;
+  padding: clamp(0.6rem, 2vw, 1.2rem) var(--gutter);
   letter-spacing: 1px;
   color: var(--text);
-  text-shadow: 0 0 10px rgba(0,170,255,0.08);
-  font-size: 1.8rem;
+  text-shadow: 0 0 10px rgba(0,170,255,0.06);
+  font-size: clamp(1rem, 2.2vw, 1.6rem);
   font-family: 'Orbitron', Arial, sans-serif;
+  box-sizing: border-box;
 }
 
 /* Make header feel like a glass card */
 .header {
-  display: inline-block;
-  padding: 12px 18px;
-  border-radius: 12px;
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(6px) saturate(110%);
-  -webkit-backdrop-filter: blur(6px) saturate(110%);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 0 18px rgba(80,215,255,0.03);
+  border-radius: 18px;
+  backdrop-filter: blur(8px) saturate(130%);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.55), 0 0 30px rgba(0,170,255,0.06);
+  border: 1px solid rgba(0,170,255,0.08);
 }
 
 /* Header layout */
-.header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.header-title{ font-size:1.8rem; }
-.header-title span{ color: var(--primary); }
+.header{ /* keep flex fallback for safety */ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.header-title{ font-size: clamp(1.05rem, 1.9vw, 1.6rem); font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:10px; text-transform:uppercase; letter-spacing:1.6px;
+  color: #eaf8ff;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.55), 0 0 18px rgba(0,170,255,0.12);
+}
+.header-title span{
+  color: var(--primary);
+  font-weight:900;
+  text-shadow: 0 0 18px rgba(0,170,255,0.28), 0 2px 8px rgba(0,0,0,0.4);
+  transform: translateY(-1px);
+}
 .header-actions{ display:flex; gap:8px; align-items:center; }
+
+/* make header compact on small screens */
+@media (max-width: 600px) {
+  .header { flex-direction: column; align-items: stretch; gap: 10px; padding: 0.6rem var(--gutter); }
+  .header-title { justify-content: center; white-space: normal; text-align: center; }
+  .header-actions { justify-content: center; }
+  .refresh-btn { width: 100%; max-width: 240px; margin: 0 auto; }
+}
+
+/* small visual breathing helper for very wide screens */
+@media (min-width: 1200px) {
+  .header { width: calc(var(--content-max)); }
+}
+
+/* visual tweak for the refresh button when inside header */
+.header .refresh-btn { padding: 10px 18px; border-radius: 14px; font-weight:800; background: linear-gradient(180deg, var(--dust), var(--primary)); color: #041014; border: none; box-shadow: 0 8px 30px rgba(0,170,255,0.12), 0 2px 8px rgba(124,58,237,0.06); }
+.header .refresh-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,170,255,0.18); }
 
 /* Card header/body */
 .card-header{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; }
@@ -126,23 +173,30 @@ body {
 .refresh-btn.loading{ opacity:0.7; transform:translateY(1px); }
 
 /* Event item improvements */
-.evt{ display:flex; flex-direction:column; gap:6px; }
+.evt{ display:flex; flex-direction:column; gap:8px; background: linear-gradient(180deg, rgba(255,255,255,0.007), rgba(255,255,255,0.003)); padding: 10px 12px; border-radius:10px; border: 1px solid rgba(255,255,255,0.03); }
 .evt .meta{ font-size:0.85rem; color:var(--muted); }
-.evt .badge{ display:inline-block; padding:4px 10px; border-radius:12px; font-size:0.78rem; background:rgba(220,38,38,0.08); color:var(--accent); margin-left:6px }
+.evt .badge{ display:inline-block; padding:6px 10px; border-radius:12px; font-size:0.78rem; margin-left:6px; font-weight:700; }
+
+/* Badge variants for event severity */
+.evt .badge.info { background: rgba(0,170,255,0.08); color: var(--primary); }
+.evt .badge.warn { background: rgba(255,179,71,0.08); color: var(--dust); }
+.evt .badge.crit { background: rgba(220,38,38,0.10); color: var(--accent); }
 
 .card {
-  /* Glassmorphism */
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  padding: 18px 24px;
-  border-radius: 14px;
-  box-shadow: 0 12px 36px rgba(0,0,0,0.6), 0 0 36px rgba(255,179,71,0.04);
-  margin-bottom: 18px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  /* Polished glass card with colored accent */
   position: relative;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--card-padding);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55), 0 0 30px rgba(0,0,0,0.12) inset;
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   transition: transform 220ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms;
+  margin-bottom: var(--card-gap);
 }
 
 .card::after {
@@ -153,6 +207,41 @@ body {
   height: 40%;
   pointer-events: none;
   background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+}
+
+/* colored accent stripe on the left */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: 6px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--energy));
+  box-shadow: 0 6px 18px rgba(0,170,255,0.06);
+  pointer-events: none;
+}
+
+/* header layout inside card */
+.card-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding-left: calc(20px + 8px); padding-top: calc(var(--card-gap) / 4); padding-bottom: calc(var(--card-gap) / 4); }
+.card-header h3{ margin:0; color:var(--primary); font-size: clamp(1rem, 1.6vw, 1.15rem); letter-spacing:0.6px; }
+.card-header h3 small{ color: var(--muted); font-weight:600; font-size:0.7rem; margin-left:8px; }
+.card-meta{ color: var(--muted); font-size:0.85rem; text-align:right; }
+
+.card-body{ padding-top:12px; padding-left: calc(20px + 8px); padding-right:12px; padding-bottom: calc(var(--card-gap) / 3); }
+
+/* make canvas/chart fill available area with a sensible min-height */
+.card canvas{ display:block; width:100% !important; height:auto !important; min-height: 220px; border-radius:10px; }
+
+/* hover lift */
+.card:hover{ transform: translateY(-6px); box-shadow: 0 26px 60px rgba(2,8,23,0.7), 0 0 50px rgba(0,195,255,0.06); }
+
+@media (max-width: 600px){
+  .card::before{ left:8px; top:10px; bottom:10px; }
+  .card-header{ padding-left:18px; padding-right:18px; flex-direction:column; align-items:flex-start; }
+  .card-body{ padding-left:18px; padding-right:18px; }
+  .card canvas{ min-height: 160px; }
 }
 
 .card:hover {
@@ -166,14 +255,38 @@ h3, h4 {
   font-family: 'Orbitron', Arial, sans-serif;
 }
 
+/* Bolder, punchier typography for emphasis */
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+p, li, .card-body, .evt { 
+  color: rgba(234,248,255,0.96);
+  line-height: 1.55;
+}
+
+/* general strong/b emphasis (keeps .evt strong specific rule intact) */
+strong, b, .important {
+  color: var(--dust);
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(255,179,71,0.06);
+}
+
+/* headings slightly heavier */
+h3, h4 { font-weight: 900; letter-spacing: 0.6px; }
+
 canvas {
   background: linear-gradient(90deg, #151827 0%, #0f1624 100%);
   border-radius: 10px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .events {
-  max-height: 220px;
+  max-height: clamp(120px, 22vh, 260px);
   overflow:auto;
   background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));
   border-radius: 10px;
@@ -197,9 +310,10 @@ canvas {
 }
 
 .evt strong {
-  color: var(--accent);
-  text-shadow: 0 0 6px rgba(255,215,110,0.08);
-  font-size: 0.92em;
+  color: var(--primary);
+  text-shadow: 0 0 6px rgba(0,170,255,0.06);
+  font-size: 0.98em;
+  font-weight:800;
 }
 
 ::-webkit-scrollbar {
@@ -222,9 +336,9 @@ canvas {
 .main-content {
   position: relative;
   z-index: 10;
-  max-width: 700px;
+  max-width: min(92vw, var(--content-max));
   margin: 0 auto;
-  padding: 2rem 1rem 3rem 1rem;
+  padding: var(--pad-vertical) var(--gutter) calc(var(--pad-vertical) + 0.5rem) var(--gutter);
 }
 
 
@@ -293,3 +407,5 @@ canvas {
     padding: 0.2rem 0.05rem 0.5rem 0.05rem;
   }
 }
+
+

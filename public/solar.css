@@ -15,7 +15,7 @@ html,body{
 .star-container{
   position:fixed;
   inset:0;
-  z-index:0;
+  z-index:0; /* sit above background stars but below UI */
   pointer-events:none;
   overflow:hidden;
 }
@@ -24,10 +24,30 @@ html,body{
   width:2px;
   height:2px;
   border-radius:50%;
-  background: rgba(80,215,255,0.9);
+  background: var(--primary, #00AFFF);
   opacity:0.9;
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.6));
+  filter: drop-shadow(0 0 6px rgba(0,170,255,0.6));
 }
+
+/* Back star layer: sits behind solar system */
+.star-background{
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* behind solar system but above page background */
+  pointer-events: none;
+  overflow: hidden;
+}
+.star-background .star{ opacity:0.6; filter: none; background: rgba(255,255,255,0.85); }
+.star-background .star.large{ width:3px; height:3px; box-shadow: 0 0 6px rgba(255,255,255,0.6); }
+
+/* Subtle drift for depth */
+@keyframes drift {
+  0%{ transform: translateY(0) translateX(0); }
+  50%{ transform: translateY(-8px) translateX(4px); }
+  100%{ transform: translateY(0) translateX(0); }
+}
+.star-background .star{ animation: twinkle 3s linear infinite alternate, drift 20s linear infinite; }
+
 
 /* Solar system wrapper - positioned left, half off-screen */
 .container.solar{
@@ -38,7 +58,7 @@ html,body{
   background: transparent;
   width: 900px;
   height: 900px;
-  z-index: 0;
+  z-index: 1; /* slightly above stars but below UI */
   pointer-events: none;
 }
 
