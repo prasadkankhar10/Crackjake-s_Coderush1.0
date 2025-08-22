@@ -23,7 +23,7 @@ function createStars(count) {
     positions.push(-Math.random() * 1000);
   }
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const material = new THREE.PointsMaterial({ color: 0xffffff, size: 1.2 });
+  const material = new THREE.PointsMaterial({ color: 0x00AFFF, size: 1.2 }); // Electric Blue starburst
   const stars = new THREE.Points(geometry, material);
   scene.add(stars);
 }
@@ -36,7 +36,7 @@ const solarSystem = new THREE.Group();
 
 // Sun with glow
 const sunGeometry = new THREE.SphereGeometry(22, 40, 40);
-const sunTexture = loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/sun.jpg');
+const sunTexture = loadTexture('textures/planets/sun.jpg');
 const sunMaterial = new THREE.MeshBasicMaterial({ map: sunTexture });
 const sun = new THREE.Mesh(sunGeometry, sunMaterial);
 // Shift solar system further left so it's half on and half off the screen
@@ -47,7 +47,7 @@ solarSystem.add(sun);
 
 // Sun glow effect
 const sunGlowGeometry = new THREE.SphereGeometry(26, 40, 40);
-const sunGlowMaterial = new THREE.MeshBasicMaterial({ color: 0xfff7a0, transparent: true, opacity: 0.25 });
+const sunGlowMaterial = new THREE.MeshBasicMaterial({ color: 0xFFB347, transparent: true, opacity: 0.25 }); // Dust Glow
 const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
 sunGlow.position.copy(sun.position);
 solarSystem.add(sunGlow);
@@ -55,14 +55,14 @@ solarSystem.add(sunGlow);
 
 // Planets data: [radius, textureURL, orbitRadius, orbitSpeed, hasRing]
 const planetsData = [
-  [3,  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mercury.jpg', 38, 0.018, false],
-  [5,  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/venus.jpg', 55, 0.014, false],
-  [5.5,'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg', 75, 0.012, false],
-  [4.5,'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg', 100, 0.010, false],
-  [10, 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter.jpg', 140, 0.007, false],
-  [8,  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn.jpg', 180, 0.005, true],
-  [7,  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/uranus.jpg', 220, 0.003, false],
-  [7,  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/neptune.jpg', 260, 0.002, false]
+  [3,  'textures/planets/mercury.jpg', 38, 0.018, false],
+  [5,  'textures/planets/venus.jpg', 55, 0.014, false],
+  [5.5,'textures/planets/earth_atmos_2048.jpg', 75, 0.012, false],
+  [4.5,'textures/planets/mars_1k_color.jpg', 100, 0.010, false],
+  [10, 'textures/planets/jupiter.jpg', 140, 0.007, false],
+  [8,  'textures/planets/saturn.jpg', 180, 0.005, true],
+  [7,  'textures/planets/uranus.jpg', 220, 0.003, false],
+  [7,  'textures/planets/neptune.jpg', 260, 0.002, false]
 ];
 
 const planetMeshes = [];
@@ -78,7 +78,7 @@ for (let i = 0; i < planetsData.length; i++) {
   // Saturn's ring
   if (hasRing) {
     const ringGeometry = new THREE.RingGeometry((radius+2)*solarScale, (radius+5)*solarScale, 64);
-    const ringTexture = loadTexture('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturnringcolor.jpg');
+  const ringTexture = loadTexture('textures/planets/saturnringcolor.jpg');
     const ringMaterial = new THREE.MeshBasicMaterial({ map: ringTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
     ring.position.set(0, 0, 0);

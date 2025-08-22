@@ -40,7 +40,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- legacy Three.js background removed in favor of CSS solar system -->
+  <!-- Optionally keep solar.js for CSS/HTML solar system overlay -->
   <script src="solar.js"></script>
   <script>
     const ctx1 = document.getElementById('chart1').getContext('2d');
@@ -78,12 +78,12 @@
           data: { labels: labelsMag, datasets: [{
             label: 'IMF Bz (nT)',
             data: bz,
-            borderColor: '#ffeb3b',
-            backgroundColor: 'rgba(255,235,59,0.10)',
+            borderColor: '#FFB347',
+            backgroundColor: 'rgba(255,179,71,0.10)',
             tension: 0.25, pointRadius: 0, borderWidth: 2
           }]},
-          options: { responsive: true, plugins: { legend: { labels: { color: '#ffeb3b' } } },
-            scales: { x: { ticks: { color: '#e0e6f6', maxTicksLimit: 12 } }, y: { ticks: { color: '#e0e6f6' } } } }
+          options: { responsive: true, plugins: { legend: { labels: { color: '#FFB347' } } },
+            scales: { x: { ticks: { color: '#e6f3fb', maxTicksLimit: 12 } }, y: { ticks: { color: '#e6f3fb' } } } }
         };
 
         if (!chart1) chart1 = new Chart(ctx1, config1); else { chart1.data = config1.data; chart1.update(); }
@@ -99,8 +99,8 @@
       if (!events.length) { el.innerHTML = '<i>No events detected (yet)</i>'; return; }
       el.innerHTML = events.slice().reverse().map(e => `
         <div class="evt">
-          <strong>${e.timeISO}</strong> — <span style="color:#00c3ff">speed:</span> ${e.speed} km/s, <span style="color:#ffeb3b">density:</span> ${e.density} p/cm³, <span style="color:#ff1744">bz:</span> ${e.bz} nT
-          <div style="color:#00c3ffb0">ΔV: ${e.deltaV ?? 'n/a'} km/s • arrival: ${e.forecast_arrival_hours ?? 'n/a'} h • <span style="color:#ffeb3b">${e.intensity}</span></div>
+          <strong>${e.timeISO}</strong> — <span style="color:#00AFFF">speed:</span> ${e.speed} km/s, <span style="color:#FFB347">density:</span> ${e.density} p/cm³, <span style="color:#DC2626">bz:</span> ${e.bz} nT
+          <div style="color:rgba(0,170,255,0.6)">ΔV: ${e.deltaV ?? 'n/a'} km/s • arrival: ${e.forecast_arrival_hours ?? 'n/a'} h • <span style="color:#FFB347">${e.intensity}</span></div>
         </div>
       `).join('');
     }

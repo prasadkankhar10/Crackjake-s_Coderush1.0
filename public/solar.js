@@ -35,7 +35,12 @@
   </div>`;
   const wrapper = document.createElement('div');
   wrapper.innerHTML = html;
-  document.body.appendChild(wrapper.firstElementChild);
+  const solarSystem = wrapper.firstElementChild;
+  if (document.body.firstChild) {
+    document.body.insertBefore(solarSystem, document.body.firstChild);
+  } else {
+    document.body.appendChild(solarSystem);
+  }
 })();
 
 // Make sure the stars reposition on resize
