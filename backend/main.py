@@ -6,6 +6,9 @@ from sklearn.ensemble import IsolationForest
 import numpy as np
 import io
 import httpx
+from pathlib import Path
+
+from ingest_suit import folder_to_csv
 
 app = FastAPI()
 
@@ -182,3 +185,57 @@ async def donki():
     async with httpx.AsyncClient() as client:
         resp = await client.get("https://api.nasa.gov/DONKI/CME?api_key=DEMO_KEY")
         return resp.json()
+
+
+@app.post("/detect_suit_folder")
+async def detect_suit_folder(folder: str):
+    """Server-side: convert a SUIT FITS folder (inside data/) to CSV and run detection.
+    Provide `folder` as a relative path inside the repo `data/` folder, for example:
+    /detect_suit_folder?folder=suit_2025Aug22T041648755
+    """
+    base = Path(__file__).resolve().parent.parent
+    data_dir = base / "data"
+    # resolve folder path - prefer relative under data/
+    folder_path = Path(folder)
+    if not folder_path.is_absolute():
+        folder_path = data_dir / folder_path
+    try:
+        folder_path = folder_path.resolve()
+        # safety: ensure folder is under data_dir
+        if not str(folder_path).startswith(str(data_dir.resolve())):
+            return {"error": "folder must be inside data/ directory"}
+        if not folder_path.exists() or not folder_path.is_dir():
+            return {"error": f"folder not found: {folder_path}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+    out_csv = data_dir / f"suit_converted_{folder_path.name}.csv"
+    try:
+        folder_to_csv(folder_path, out_csv)
+    except Exception as e:
+        return {"error": f"ingest failed: {e}"}
+
+    # read CSV and run existing detection pipeline
+    try:
+        df = pd.read_csv(out_csv)
+    except Exception as e:
+        return {"error": f"failed to read converted CSV: {e}"}
+
+    anomaly_indices = detect_anomaly(df)
+    intensity = classify_intensity(df, anomaly_indices)
+    eta = estimate_eta(df, anomaly_indices)
+    direction, confidence = compute_direction_and_confidence(df, anomaly_indices)
+    risk, msg = risk_level_and_message(intensity)
+
+    return {
+        "cme_detected": bool(anomaly_indices),
+        "intensity": intensity,
+        "eta_hours": eta if eta else 0.0,
+        "message": msg,
+        "risk_level": risk,
+        "anomaly_indices": anomaly_indices,
+        "direction_estimate": direction,
+        "confidence": confidence,
+        "rows": len(df),
+        "csv": str(out_csv)
+    }
