@@ -1,0 +1,20 @@
+[33m5e67723[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{2025-08-22 17:58:15 +0530}: commit: new project
+[33md1512d2[m HEAD@{2025-08-22 17:57:38 +0530}: commit: Add Node NOAA polling server (app.js) with endpoints /latest /events /cme-detect
+[33m97279e3[m HEAD@{2025-08-22 16:16:54 +0530}: commit: Add NOAA /data endpoint and SolarWindChart; poll NOAA directly in frontend (remove large zip)
+[33m50d0bcc[m HEAD@{2025-08-22 16:16:54 +0530}: reset: moving to origin/main
+[33m9a68b10[m HEAD@{2025-08-22 16:15:14 +0530}: commit: Add NOAA /data endpoint and SolarWindChart; poll NOAA directly in frontend
+[33m12efe95[m HEAD@{2025-08-22 13:37:34 +0530}: commit: some small chan
+[33m50d0bcc[m HEAD@{2025-08-22 11:37:51 +0530}: commit: feat(frontend): add SUIT-folder detect UI and show direction/confidence
+[33mab1c7da[m HEAD@{2025-08-22 11:32:18 +0530}: commit: feat: add /detect_suit_folder endpoint to ingest SUIT FITS and run detection
+[33m585a9b2[m HEAD@{2025-08-22 11:29:00 +0530}: commit: feat: combine speed+flux detection, add direction heuristic and confidence
+[33m7ec68fa[m HEAD@{2025-08-22 11:03:30 +0530}: commit: feat: add SUIT FITS ingestion helper
+[33mc0e4433[m HEAD@{2025-08-22 10:59:21 +0530}: reset: moving to origin/main
+[33m92810ae[m HEAD@{2025-08-22 10:59:17 +0530}: rebase (abort): returning to refs/heads/main
+[33m007d817[m HEAD@{2025-08-22 10:57:02 +0530}: commit: docs: update README.md
+[33mb496a73[m HEAD@{2025-08-22 10:55:40 +0530}: commit: chore: update README and .gitignore
+[33m212a55f[m HEAD@{2025-08-22 10:41:12 +0530}: commit: Initial hackathon MVP: Aditya-L1 CME detection (FastAPI + React)
+[33m4c03052[m HEAD@{2025-08-22 10:35:05 +0530}: pull --rebase origin main (start): checkout 4c03052f05549b44ffbec9a2ba26ccc6162b9fbc
+[33m92810ae[m HEAD@{2025-08-22 10:34:50 +0530}: Branch: renamed refs/heads/aditya-l1-mvp to refs/heads/main
+[33m92810ae[m HEAD@{2025-08-22 10:33:52 +0530}: commit: Add .gitignore and remove tracked node_modules
+[33m5cf15e9[m HEAD@{2025-08-22 10:30:22 +0530}: commit: Add PR_DESCRIPTION.md to describe MVP
+[33m832ec55[m HEAD@{2025-08-22 10:26:16 +0530}: commit (initial): Add MVP scaffold and sample data
