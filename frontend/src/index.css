@@ -1,4 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body { background: #f8fafc; }
+body { background: #f8fafc; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+/* small helper to ensure container spacing matches design */
+.max-w-5xl { max-width: 72rem; }

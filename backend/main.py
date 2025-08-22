@@ -6,9 +6,18 @@ from sklearn.ensemble import IsolationForest
 import numpy as np
 import io
 import httpx
+import requests
 from pathlib import Path
 
-from ingest_suit import folder_to_csv
+from ingest_suit import folder_to_csv, process_fits_file
+try:
+    from astropy.io import fits as _fits
+except Exception:
+    _fits = None
+import tempfile
+import zipfile
+import shutil
+import os
 
 app = FastAPI()
 
@@ -19,6 +28,49 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+NOAA_URL = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
+
+
+@app.get("/data")
+def get_data():
+    # NOAA API gives JSON, not CSV
+    r = requests.get(NOAA_URL)
+    data = r.json()
+
+    # Convert to DataFrame (skip header row)
+    df = pd.DataFrame(data[1:], columns=data[0])
+    # parse timestamp and numeric columns
+    if 'time_tag' in df.columns:
+        df["time_tag"] = pd.to_datetime(df["time_tag"], errors='coerce')
+    # NOAA fields names can vary; map to density/speed if present
+    if 'density' in df.columns:
+        df["density"] = pd.to_numeric(df["density"], errors="coerce")
+    if 'speed' in df.columns:
+        df["speed"] = pd.to_numeric(df["speed"], errors="coerce")
+
+    # Drop NaNs
+    if 'density' in df.columns and 'speed' in df.columns:
+        df = df.dropna(subset=["density", "speed"])
+
+    # Anomaly detection (if numeric data present)
+    if 'density' in df.columns and 'speed' in df.columns and len(df) > 0:
+        features = df[["density", "speed"]]
+        model = IsolationForest(contamination=0.02, random_state=42)
+        try:
+            df["anomaly"] = model.fit_predict(features)
+            df["anomaly"] = df["anomaly"].apply(lambda x: 1 if x == -1 else 0)
+        except Exception:
+            df["anomaly"] = 0
+    else:
+        df["anomaly"] = 0
+
+    # Return records (convert timestamps to ISO strings)
+    out = df.to_dict(orient="records")
+    for r in out:
+        if isinstance(r.get('time_tag'), (pd.Timestamp,)):
+            r['time_tag'] = r['time_tag'].isoformat()
+    return out
 
 class DetectionResult(BaseModel):
     cme_detected: bool
@@ -239,3 +291,148 @@ async def detect_suit_folder(folder: str):
         "rows": len(df),
         "csv": str(out_csv)
     }
+
+
+@app.post('/detect_suit_upload')
+async def detect_suit_upload(file: UploadFile = File(...)):
+    """Accept a ZIP file upload containing SUIT FITS files. Extract, run ingest, detect, and return results."""
+    # validate content type (basic)
+    if not (file.filename.lower().endswith('.zip') or file.content_type == 'application/zip'):
+        return {"error": "please upload a .zip file containing FITS files"}
+
+    tmpdir = Path(tempfile.mkdtemp(prefix='suit_upload_'))
+    try:
+        data = await file.read()
+        zip_path = tmpdir / file.filename
+        zip_path.write_bytes(data)
+        # extract
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                z.extractall(tmpdir)
+        except zipfile.BadZipFile:
+            return {"error": "invalid zip file"}
+
+        # find folder with FITS files (or use tmpdir)
+        fits_folder = None
+        for root, dirs, files in os.walk(tmpdir):
+            for f in files:
+                if f.lower().endswith(('.fits', '.fit', '.fts')):
+                    fits_folder = Path(root)
+                    break
+            if fits_folder:
+                break
+        if not fits_folder:
+            return {"error": "no FITS files found in uploaded zip"}
+
+        out_csv = tmpdir / f"suit_converted_upload.csv"
+        folder_to_csv(fits_folder, out_csv)
+
+        df = pd.read_csv(out_csv)
+        anomaly_indices = detect_anomaly(df)
+        intensity = classify_intensity(df, anomaly_indices)
+        eta = estimate_eta(df, anomaly_indices)
+        direction, confidence = compute_direction_and_confidence(df, anomaly_indices)
+        risk, msg = risk_level_and_message(intensity)
+
+        return {
+            "cme_detected": bool(anomaly_indices),
+            "intensity": intensity,
+            "eta_hours": eta if eta else 0.0,
+            "message": msg,
+            "risk_level": risk,
+            "anomaly_indices": anomaly_indices,
+            "direction_estimate": direction,
+            "confidence": confidence,
+            "rows": len(df),
+            "csv": str(out_csv)
+        }
+    finally:
+        # cleanup
+        try:
+            shutil.rmtree(tmpdir)
+        except Exception:
+            pass
+
+
+@app.post('/detect_suit_file')
+async def detect_suit_file(file: UploadFile = File(...)):
+    """Accept a single FITS file upload and run ingestion+detect on it."""
+    if not file.filename.lower().endswith(('.fits', '.fit', '.fts')):
+        return {"error": "please upload a FITS file (extension .fits/.fit/.fts)"}
+
+    tmpdir = Path(tempfile.mkdtemp(prefix='suit_file_'))
+    try:
+        data = await file.read()
+        fitspath = tmpdir / file.filename
+        fitspath.write_bytes(data)
+        # extract header metadata using user's workflow
+        useful_keys = [
+            "DATE-OBS", "OBS_MODE", "IMGNUM",
+            "FTR_NAME", "ROI_FF", "ROI_ID", "IMG_TYPE", "CMD_EXPT",
+            "SOLX1TR", "SOLX2TR", "HELIOSTR", "FLR_TRIG", "NRMFLG", "PRMFLG", "SX1FLG", "SX2FLG", "HL1OSFLG",
+            "CRPIX1", "CRPIX2", "RSUN_OBS", "DSUN_OBS", "HGLT_OBS", "HGLN_OBS", "P_ANGLE", "ROLL"
+        ]
+
+        metadata = {}
+        if _fits is None:
+            return {"error": "astropy is required on the server to read FITS headers"}
+        try:
+            with _fits.open(fitspath) as fh:
+                hdr = dict(fh[0].header)
+        except Exception as e:
+            return {"error": f"failed to read FITS header: {e}"}
+
+        for k in useful_keys:
+            metadata[k] = hdr.get(k, None)
+        metadata['file'] = fitspath.name
+        metadata['path'] = str(fitspath)
+
+        # write metadata CSV
+        meta_csv = tmpdir / f"{fitspath.stem}_metadata.csv"
+        try:
+            pd.DataFrame([metadata]).to_csv(meta_csv, index=False)
+        except Exception as e:
+            return {"error": f"failed to write metadata CSV: {e}"}
+
+        # compute irradiance proxy from image data (reuse existing helper)
+        info = process_fits_file(fitspath)
+        if not info:
+            return {"error": "failed to parse FITS file image data"}
+
+        # construct detection-compatible CSV (single-row)
+        det_row = {
+            'timestamp': info.get('timestamp') or metadata.get('DATE-OBS'),
+            'solar_irradiance': info.get('solar_irradiance'),
+            'solar_wind_speed': pd.NA,
+            'solar_wind_density': pd.NA,
+            'particle_flux': pd.NA
+        }
+        det_df = pd.DataFrame([det_row])
+        det_csv = tmpdir / f"{fitspath.stem}_converted.csv"
+        det_df.to_csv(det_csv, index=False)
+
+        anomaly_indices = detect_anomaly(det_df)
+        intensity = classify_intensity(det_df, anomaly_indices)
+        eta = estimate_eta(det_df, anomaly_indices)
+        direction, confidence = compute_direction_and_confidence(det_df, anomaly_indices)
+        risk, msg = risk_level_and_message(intensity)
+
+        return {
+            "cme_detected": bool(anomaly_indices),
+            "intensity": intensity,
+            "eta_hours": eta if eta else 0.0,
+            "message": msg,
+            "risk_level": risk,
+            "anomaly_indices": anomaly_indices,
+            "direction_estimate": direction,
+            "confidence": confidence,
+            "rows": len(det_df),
+            "metadata_csv": str(meta_csv),
+            "detection_csv": str(det_csv),
+            "metadata": metadata
+        }
+    finally:
+        try:
+            shutil.rmtree(tmpdir)
+        except Exception:
+            pass

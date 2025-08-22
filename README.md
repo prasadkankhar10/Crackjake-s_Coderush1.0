@@ -18,6 +18,7 @@ cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
+Note: for SUIT FITS support install `astropy` in the backend venv: `pip install astropy`
 
 ### 2. Frontend
 ```sh
@@ -30,6 +31,10 @@ npm start
 - Open [http://localhost:3000](http://localhost:3000)
 - Upload `../data/sample_aditya_l1.csv`
 - See CME detection, risk, ETA, and plots
+
+Additional demo flows:
+- Upload a ZIP of FITS files in the frontend (or POST to `/detect_suit_upload`) to run server-side ingestion + detection.
+- Upload a single `.fits` file in the frontend (or POST to `/detect_suit_file`) to run detection on one image.
 
 ---
 
