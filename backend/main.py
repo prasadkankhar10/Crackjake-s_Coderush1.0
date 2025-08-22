@@ -24,6 +24,8 @@ class DetectionResult(BaseModel):
     message: str
     risk_level: str
     anomaly_indices: list
+    direction_estimate: str = "unknown"
+    confidence: float = 0.0
 
 class ForecastResult(BaseModel):
     eta_hours: float
@@ -40,15 +42,64 @@ def load_data(file: UploadFile):
     return df
 
 def detect_anomaly(df):
-    # Use rolling z-score for wind speed
-    df['zscore'] = (df['solar_wind_speed'] - df['solar_wind_speed'].rolling(3, min_periods=1).mean()) / df['solar_wind_speed'].rolling(3, min_periods=1).std(ddof=0)
-    anomalies = df.index[df['zscore'].abs() > 2].tolist()
-    # Isolation Forest for extra robustness
+    # Safe column checks
+    for col in ['solar_wind_speed', 'particle_flux', 'solar_wind_density']:
+        if col not in df.columns:
+            df[col] = np.nan
+
+    # Rolling z-scores for speed and flux
+    df['z_speed'] = (df['solar_wind_speed'] - df['solar_wind_speed'].rolling(3, min_periods=1).mean()) / df['solar_wind_speed'].rolling(3, min_periods=1).std(ddof=0)
+    df['z_flux'] = (df['particle_flux'] - df['particle_flux'].rolling(3, min_periods=1).mean()) / df['particle_flux'].rolling(3, min_periods=1).std(ddof=0)
+
+    # Threshold-based anomalies
+    speed_anoms = df.index[df['z_speed'].abs() > 2].tolist()
+    flux_anoms = df.index[df['z_flux'].abs() > 2].tolist()
+
+    # Isolation Forest using available numeric features
+    features = df[['solar_wind_speed', 'particle_flux']].fillna(method='ffill').fillna(0).values
     clf = IsolationForest(contamination=0.1, random_state=42)
-    preds = clf.fit_predict(df[['solar_wind_speed', 'solar_wind_density', 'particle_flux']])
-    iso_anomalies = df.index[preds == -1].tolist()
-    all_anomalies = list(set(anomalies + iso_anomalies))
+    try:
+        preds = clf.fit_predict(features)
+        iso_anoms = df.index[preds == -1].tolist()
+    except Exception:
+        iso_anoms = []
+
+    all_anomalies = sorted(list(set(speed_anoms + flux_anoms + iso_anoms)))
     return all_anomalies
+
+
+def compute_direction_and_confidence(df, anomaly_indices):
+    # Default
+    if not anomaly_indices:
+        return "none", 0.0
+
+    # Use indices within anomaly window
+    window = df.loc[anomaly_indices]
+
+    # Peak locations
+    try:
+        flux_peak_idx = int(window['particle_flux'].idxmax())
+        speed_peak_idx = int(window['solar_wind_speed'].idxmax())
+    except Exception:
+        # fallback: use first anomaly
+        flux_peak_idx = anomaly_indices[0]
+        speed_peak_idx = anomaly_indices[0]
+
+    # Heuristic: if particle flux peaks before speed -> likely earthward impact
+    if flux_peak_idx < speed_peak_idx:
+        direction = 'likely_earthward'
+    elif flux_peak_idx == speed_peak_idx:
+        direction = 'possible_earthward'
+    else:
+        direction = 'uncertain'
+
+    # Confidence: based on average absolute z-scores in window
+    z_speed = df.loc[anomaly_indices, 'z_speed'].abs().fillna(0)
+    z_flux = df.loc[anomaly_indices, 'z_flux'].abs().fillna(0)
+    mean_z = float(np.nanmean(np.concatenate([z_speed.values, z_flux.values]))) if len(z_speed) + len(z_flux) > 0 else 0.0
+    # normalize: assume mean_z of 4+ is high confidence
+    confidence = min(1.0, mean_z / 4.0)
+    return direction, round(confidence, 2)
 
 def classify_intensity(df, anomaly_indices):
     if not anomaly_indices:
@@ -88,6 +139,7 @@ async def detect(file: UploadFile = File(...)):
     anomaly_indices = detect_anomaly(df)
     intensity = classify_intensity(df, anomaly_indices)
     eta = estimate_eta(df, anomaly_indices)
+    direction, confidence = compute_direction_and_confidence(df, anomaly_indices)
     risk, msg = risk_level_and_message(intensity)
     return DetectionResult(
         cme_detected=bool(anomaly_indices),
@@ -95,7 +147,9 @@ async def detect(file: UploadFile = File(...)):
         eta_hours=eta if eta else 0.0,
         message=msg,
         risk_level=risk,
-        anomaly_indices=anomaly_indices
+        anomaly_indices=anomaly_indices,
+        direction_estimate=direction,
+        confidence=confidence
     )
 
 @app.post("/forecast", response_model=ForecastResult)
