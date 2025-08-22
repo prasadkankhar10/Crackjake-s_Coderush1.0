@@ -1,6 +1,6 @@
 # Aditya-L1 CME Detection MVP
 
-A hackathon-ready tool to detect, classify, and forecast CME (Coronal Mass Ejection) events using simulated Aditya-L1 payload data.
+A hackathon tool to detect, classify, and forecast CME (Coronal Mass Ejection) events using simulated Aditya-L1 payload data.
 
 ## Project Structure
 
