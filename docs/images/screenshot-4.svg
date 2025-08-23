@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="100%" height="100%" fill="#0e1720"/>
+  <text x="60" y="70" font-family="Arial" font-size="28" fill="#00AFFF" font-weight="700">Mobile / Responsive View</text>
+  <rect x="60" y="110" width="360" height="560" rx="16" fill="#071220" stroke="#00AFFF22"/>
+  <g fill="#dbefff" font-size="13">
+    <text x="80" y="150">Compact layout: charts stacked, controls accessible</text>
+    <text x="80" y="190">Predict card below charts</text>
+  </g>
+</svg>

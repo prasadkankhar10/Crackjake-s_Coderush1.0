@@ -77,3 +77,19 @@ If you want any of the following I can add them:
 - CSS cleanup (move predictive-card inline styles into `space.css`)
 
 That's it — open http://localhost:3000 and explore the UI. If you want a shorter README or additional developer docs, tell me which section to expand.
+
+## Screenshots
+
+Click any image to view full-size. These are placeholders — replace with real screenshots named the same under `docs/images/`.
+
+[![Dashboard hero](./UI/UI1.png)](./UI/UI1.png)
+_Main dashboard showing charts and cards._
+
+[![Speed threshold highlight](.\UI\UI2.png)](.\UI\UI2.png)
+_Solar wind speed chart with high-speed segments highlighted._
+
+[![Predict & Export](.\UI\UI3.png)](.\UI\UI3.png)
+_Predict card and export controls._
+
+[![Mobile view](.\UI\UI4.png)](.\UI\UI4.png)
+_Responsive mobile layout._
