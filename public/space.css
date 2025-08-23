@@ -341,6 +341,50 @@ canvas {
   padding: var(--pad-vertical) var(--gutter) calc(var(--pad-vertical) + 0.5rem) var(--gutter);
 }
 
+/* Top notification banner */
+.top-notification {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  min-width: 280px;
+  max-width: 92vw;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, rgba(0,170,255,0.95), rgba(124,58,237,0.92));
+  color: #041014;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 2px 12px rgba(0,170,255,0.12);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.top-notification .msg { flex: 1; }
+.top-notification .close { cursor: pointer; padding:6px 8px; border-radius:8px; background: rgba(255,255,255,0.08); color: #fff; font-weight:700; }
+
+@media (max-width: 480px) {
+  .top-notification { top: 10px; padding: 10px 12px; font-size: 0.95rem; }
+}
+
+/* floating test notification button (bottom-right) */
+.test-notif-btn {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9998;
+  background: linear-gradient(90deg, var(--primary), var(--energy));
+  color: #041014;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  cursor: pointer;
+  border: none;
+}
+.test-notif-btn:hover{ transform: translateY(-3px); }
+
 
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
 

@@ -10,9 +10,11 @@
 </head>
 <body>
   <div id="space-bg"></div>
+  <!-- Top notification banner (hidden by default) -->
+  <div id="topNotif" class="top-notification" aria-live="polite" role="status" style="display:none"></div>
   <div class="main-content">
     <div class="header">
-      <div class="header-title">🚀 CME Detector <span style="color:#00c3ff">— Space Edition</span></div>
+      <div class="header-title" style="color:#00080b">🚀 CME Detector <span style="color:#00c3ff">— Space Edition</span></div>
     <div class="header-actions">
   <button id="refreshBtn" class="refresh-btn" title="Refresh data">↻ Refresh</button>
     </div>
@@ -84,6 +86,9 @@
   // window sizes for zooming (number of samples shown)
   let speedWindow = 800;
   let bzWindow = 800;
+  // last polled samples (kept for manual notification button)
+  let _lastSpeedSample = null;
+  let _lastBzSample = null;
 
   async function fetchData() {
     try {
@@ -176,7 +181,56 @@
   // update window labels
   const swLabel = document.getElementById('speedWindowLabel'); if (swLabel) swLabel.innerText = `Window: ${speedWindow}`;
   const bzLabel = document.getElementById('bzWindowLabel'); if (bzLabel) bzLabel.innerText = `Window: ${bzWindow}`;
+      
+      // check latest values and possibly notify on threshold cross
+      try {
+  const latestSpeed = speeds.length ? speeds[speeds.length-1] : null;
+  const latestBz = bz.length ? bz[bz.length-1] : null;
+  // update globals for manual trigger
+  _lastSpeedSample = latestSpeed;
+  _lastBzSample = latestBz;
+  checkThresholdsAndNotify({ speed: latestSpeed, bz: latestBz });
+      } catch(e){ /* ignore */ }
     } catch (err) { console.error(err); }
+  }
+
+  // Notification state: remember last alert to avoid repeats
+  let _lastNotifKey = null;
+  function showTopNotification(text, cls='info', autoHideMs=10000) {
+    const el = document.getElementById('topNotif');
+    if (!el) return;
+    el.innerHTML = `<div class="msg">${text}</div><div class="close" aria-label="Dismiss">✕</div>`;
+    el.style.display = 'flex';
+    const closeBtn = el.querySelector('.close');
+    const hide = () => { el.style.display = 'none'; };
+    if (closeBtn) closeBtn.addEventListener('click', hide, { once: true });
+    if (autoHideMs) setTimeout(hide, autoHideMs);
+  }
+
+  // Accepts object {speed, bz} and triggers a notification when a crossing occurs
+  function checkThresholdsAndNotify({ speed, bz }) {
+    // build a simple key to dedupe notifications for same condition
+    const keyParts = [];
+    if (typeof speed === 'number') keyParts.push(`s:${Math.round(speed)}`);
+    if (typeof bz === 'number') keyParts.push(`b:${Math.round(bz)}`);
+    const key = keyParts.join('|');
+    // If nothing changed, don't re-notify
+    if (key && key === _lastNotifKey) return;
+
+    // speed crossing (above threshold)
+    if (typeof speed === 'number' && speed >= speedThreshold) {
+      _lastNotifKey = key;
+      showTopNotification(`High solar wind speed: ${Math.round(speed)} km/s (>= ${speedThreshold})`, 'warn', 12000);
+      return;
+    }
+    // bz crossing (southward / below threshold)
+    if (typeof bz === 'number' && bz <= bzThreshold) {
+      _lastNotifKey = key;
+      showTopNotification(`Southward Bz detected: ${Math.round(bz)} nT (<= ${bzThreshold})`, 'warn', 12000);
+      return;
+    }
+    // otherwise clear last key so new events can notify later
+    _lastNotifKey = key || null;
   }
 
     async function fetchEvents() {
@@ -387,6 +441,17 @@
   if (bzIn) bzIn.addEventListener('click', async () => { bzWindow = Math.max(50, Math.floor(bzWindow/1.5)); await fetchData(); });
   if (bzOut) bzOut.addEventListener('click', async () => { bzWindow = Math.min(50000, Math.ceil(bzWindow*1.5)); await fetchData(); });
   if (bzReset) bzReset.addEventListener('click', async () => { bzWindow = 800; await fetchData(); });
+  </script>
+  <!-- floating test notification button -->
+  <button id="testNotifBtn" class="test-notif-btn" title="Push notification">Notify</button>
+  <script>
+    // manual trigger button - uses last polled samples when available
+    const tbtn = document.getElementById('testNotifBtn');
+    if (tbtn) tbtn.addEventListener('click', () => {
+      const s = (typeof _lastSpeedSample === 'number') ? `${Math.round(_lastSpeedSample)} km/s` : 'n/a';
+      const b = (typeof _lastBzSample === 'number') ? `${Math.round(_lastBzSample)} nT` : 'n/a';
+      showTopNotification(`Manual notice — Speed: ${s} · Bz: ${b}`, 'info', 8000);
+    });
   </script>
 </body>
 </html>
